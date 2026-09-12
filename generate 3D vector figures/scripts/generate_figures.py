@@ -1,6 +1,6 @@
 """Renders each fixture's SceneGraph into a 2D depiction of a 3D vector
-figure, using Gemini's image-generation model (gemini-3.1-flash-image,
-"Nano Banana 2").
+figure, using a Gemini image-generation model (MODEL below -- currently
+gemini-3-pro-image; gemini-3.1-flash-image, "Nano Banana 2", also works).
 
 This is the "renderer" stage of the pipeline described in CONTRACT.md --
 consuming the already-solved, already-verified SceneGraph JSON so the
@@ -22,13 +22,14 @@ from __future__ import annotations
 import json
 import os
 import sys
+from fractions import Fraction
 from pathlib import Path
 
 FEATURE_ROOT = Path(__file__).resolve().parent.parent
 PROJECT_ROOT = FEATURE_ROOT.parent
 FIXTURES_DIR = FEATURE_ROOT / "input"
 OUT_DIR = FEATURE_ROOT / "output"
-MODEL = "gemini-3.1-flash-image"
+MODEL = "gemini-3-pro-image"
 
 API_KEY_ENV_VARS = ("GEMINI_API_KEY", "GEMINI_JEE_LATEX_API_KEY", "GOOGLE_API_KEY")
 
@@ -39,6 +40,24 @@ ROLE_STYLE = {
     "computed_point": {"color": "darkgreen", "line_style": "none"},
     "computed_line": {"color": "darkgreen", "line_style": "solid"},
     "computed_vector": {"color": "darkgreen", "line_style": "dotted"},
+}
+
+# The three coordinate planes, drawn as pastel "walls" for depth -- kept
+# as explicit config (same pattern as ROLE_STYLE) rather than buried in
+# prose, so the color-per-plane mapping is a single source of truth.
+PLANE_STYLE = {
+    "xy": "powder light blue",
+    "yz": "powder light yellow",
+    "xz": "powder light green",
+}
+
+# Axis-tick policy, applied identically to every generated figure: ticks
+# are drawn with no numeric values, and every axis must show a visible
+# negative extent even when no entity in that particular problem has a
+# negative coordinate on it.
+AXIS_STYLE = {
+    "tick_labels": False,
+    "negative_extent_required": True,
 }
 
 # Display-only substitution: fixture label text and param_name spell Greek
@@ -89,6 +108,22 @@ def fmt_vec(v: dict) -> str:
     return f"({v['x']}, {v['y']}, {v['z']})"
 
 
+# Natural-language placement phrases, deliberately avoiding the word
+# "edge" and compass abbreviations (N/S/E/W) -- gemini-3-pro-image was
+# observed literally writing "(NW edge)" / "(SW edge)" onto the image
+# next to labels when the placement instruction used that phrasing.
+ANCHOR_PHRASE = {
+    "north": "just above",
+    "south": "just below",
+    "east": "just to the right of",
+    "west": "just to the left of",
+    "north east": "just above and to the right of",
+    "north west": "just above and to the left of",
+    "south east": "just below and to the right of",
+    "south west": "just below and to the left of",
+}
+
+
 def describe_entity(e: dict) -> str:
     """Returns (description_text, literal_on_image_label). The description
     is instructions FOR the model (positions, colors, anchor rules) --
@@ -106,11 +141,26 @@ def describe_entity(e: dict) -> str:
         f"- id `{e['id']}` ({e['kind']}, role={e['visual_role']}): "
         f"color {style['color']}, line style {style['line_style']}.",
         f"  ON-IMAGE TEXT FOR THIS ENTITY (verbatim, exactly this and nothing "
-        f"more): \"{label_text}\" -- place it at the {e['label']['anchor']} "
-        "edge of the entity so it never overlaps the point/line/arrow itself.",
+        f"more): \"{label_text}\". Position it {ANCHOR_PHRASE[e['label']['anchor']]} "
+        "the point/line/arrow, close enough to clearly belong to it but never "
+        "overlapping it. This placement description is an instruction for you, "
+        "not something to write on the image.",
     ]
     if e["kind"] == "point":
-        lines.append(f"  Plot at coordinates {fmt_vec(e['coordinates'])} (not written on the image; for your placement only).")
+        coords = fmt_vec(e["coordinates"])
+        lines.append(
+            f"  Plot at coordinates {coords} -- for your placement only. Do NOT write "
+            f"\"{coords}\" or any of its numbers as text near this point; its only "
+            f"on-image text is the exact label string given above."
+        )
+        if Fraction(e["coordinates"]["z"]) != 0:
+            lines.append(
+                "  ELEVATION: this point sits above/below the x-y plane. Draw a thin, "
+                "light dashed vertical stem straight down (parallel to the z-axis) from "
+                "this point to its shadow directly below it on the x-y plane, with a tiny "
+                "tick or dot marking that shadow point -- this makes the point's height "
+                "above the plane immediately readable. No text/coordinates on this stem."
+            )
     elif e["kind"] == "parametric_line":
         lines.append(
             f"  Passes through {fmt_vec(e['anchor'])} with direction {fmt_vec(e['direction'])} "
@@ -175,6 +225,31 @@ def build_prompt(scene_graph: dict) -> str:
 
     whitelist = ", ".join(f'"{lbl}"' for lbl in on_image_labels)
 
+    negative_extent = (
+        "but EVERY axis -- x, y, AND z, in this figure and in every other figure "
+        "in this set -- must ALSO show a short, clearly visible stub on the "
+        "NEGATIVE side of the origin, poking out from behind/below the pastel "
+        "corner-box, with 2-3 small tick marks on that stub. This negative stub "
+        "is mandatory in every figure, even when no entity in this particular "
+        "problem has a negative coordinate on that axis -- it establishes that "
+        "the axis continues past the origin, it does not need to be as long as "
+        "the positive side."
+        if AXIS_STYLE["negative_extent_required"]
+        else ""
+    )
+    tick_number_rule = (
+        "TICKS HAVE NO NUMBERS: draw the tick marks themselves (short perpendicular "
+        "dashes across each axis, both positive and negative sides) but do NOT "
+        "write any numeral next to any tick -- the axes carry only their x / y / z "
+        "name and the tick marks, nothing numeric."
+        if not AXIS_STYLE["tick_labels"]
+        else "Label a few tick marks on each axis with their integer value."
+    )
+    plane_bullets = "\n".join(
+        f"  - the {pair[0]}-{pair[1]} plane: very pale {PLANE_STYLE[pair]}"
+        for pair in ("xy", "yz", "xz")
+    )
+
     return f"""Create a textbook-style 2D diagram depicting a 3D vector-geometry
 figure (problem {scene_graph['problem_id']}) that genuinely reads as three-
 dimensional space, not a flat schematic -- the way a well-drawn textbook
@@ -183,24 +258,32 @@ diagram, NOT a photorealistic render.
 
 COORDINATE SYSTEM:
 Use an oblique 3D projection: x, y, z axes as three lines meeting at a
-labelled origin O. EACH axis must extend in BOTH directions from the
-origin (positive AND negative) -- do not draw axes as one-way rays. Put
-small, evenly-spaced tick marks along all three axes on both sides of the
-origin (e.g. every 1-2 units), so the negative regions of the coordinate
-system are visibly present, not just implied. Axes are thin and gray,
-clearly behind the geometric entities, with light tick labels (a few
-integers is enough -- do not label every tick).
+labelled origin O. FIXED ORIENTATION, same in every figure in this set:
+z is always the vertical axis (straight up), y is always the horizontal
+axis (pointing right), and x is always the diagonal axis receding toward
+the lower-left (coming toward the viewer). Do not rotate or relabel which
+axis plays which role. Draw each axis mostly as a ray into its positive
+direction (this is what the pastel corner-box below naturally shows),
+{negative_extent}
+{tick_number_rule}
 
-DEPTH:
-Make the space itself read as three-dimensional: use consistent
-foreshortening (the axis coming toward the viewer drawn shorter/more
-oblique than the other two), and a subtle, light gray floor-plane grid
-(aligned to two of the three axes) purely as a depth cue -- faint enough
-that it never competes with the entities themselves. Lines/vectors that
-extend further from the viewer along the depth axis may be drawn very
-slightly lighter to reinforce depth, but every entity must remain
-clearly legible and true to its exact coordinates -- depth cues are
-support, not the subject.
+DEPTH -- three coordinate planes as pastel "walls":
+Draw the three coordinate planes as faint, flat-colored quadrant panels
+meeting at the origin like the inside corner of a box (the standard
+textbook way to show 3D depth in a 2D image) -- each panel covering the
+positive-positive quadrant of its two axes is sufficient, matching the
+positive rays described above:
+{plane_bullets}
+These must be POWDER/PASTEL tones only -- extremely light, low-saturation
+washes, closer to white than to a saturated color, and each plane should
+include its own faint grid lines in a slightly darker shade of the same
+pastel so the plane itself still reads as a surface. None of the three
+planes may be strong or saturated enough to compete with the entities
+(points/lines/vectors) drawn on top of them, and none should obscure any
+entity, label, or axis. Combined with consistent foreshortening (the axis
+coming toward the viewer drawn shorter/more oblique than the other two),
+this -- plus the mandatory negative stubs above -- is what should make
+the space read as genuinely three-dimensional while staying readable.
 
 Every coordinate below has already been computed and verified exactly by
 a symbolic solver -- do not alter, round, or re-derive any of them. Plot
@@ -221,30 +304,38 @@ polished):
    never rely on color alone or line style alone, and never rely only on
    the angle two lines/vectors meet at to distinguish them (a shallow angle
    in 3D-on-2D can look like the same line continuing).
-2. Every label needs an explicit anchor edge (as specified per entity above)
-   -- position each label so it never overlaps the point, line, or vector it
-   names, and never writes raw coordinate tuples or parameter names onto
-   the figure as if they were the label.
+2. Every label is positioned per its placement instruction above -- so it
+   never overlaps the point, line, or vector it names -- but placement
+   instructions (words describing WHERE to put text) must never themselves
+   become text on the image. Never write raw coordinate tuples or
+   parameter names onto the figure as if they were the label either.
 3. Greek letters (α, β, γ, λ, ...) must render as proper mathematical
    symbols, never spelled out as Latin words.
 4. Labels and all mathematical notation should be a normal, legible text
    size matching clean textbook typography -- not tiny, not oversized.
 5. Do not add any point, line, vector, or plane that is not listed above.
-   The only permitted "extra" elements are the axis tick marks and the
-   single faint depth-cue floor grid described above -- no other
-   decoration, no photorealistic lighting or texture.
-6. Keep the background plain/white so the figure reads clearly as a
-   reference diagram, not an illustration.
+   The only permitted "extra" elements are the axis tick marks (no
+   numbers), the three pastel coordinate-plane washes, and (for points
+   with a nonzero z) the thin dashed elevation stem down to the x-y plane,
+   all described above -- no other decoration, no photorealistic lighting
+   or texture.
+6. The background outside the three pastel coordinate planes stays plain
+   white -- the planes are the only color washes in the figure, so it
+   still reads as a clean reference diagram, not an illustration.
 7. TEXT WHITELIST -- this is the single most important rule. The ONLY
    text allowed anywhere on the image is: the axis names x, y, z; the
-   origin mark O; small numeral tick labels on the axes; and these exact
-   strings, one per entity, nothing else: {whitelist}.
+   origin mark O; and these exact strings, one per entity, nothing else:
+   {whitelist}. Tick marks are drawn with NO numerals next to them at all.
    Do NOT write any coordinate tuple, anchor point, direction vector, or
    parameter name as its own separate text anywhere on the image, even
    near the entity it describes -- that numeric information is there so
    you know WHERE to draw and how to size arrows, not WHAT to write. If
-   it is not one of the exact strings listed above (or an axis name /
-   tick numeral), it must not appear as text on the image.
+   it is not one of the exact strings listed above (or an axis name),
+   it must not appear as text on the image -- this includes tick marks
+   (no numeral at all) and every placement/anchor word used above to
+   describe WHERE to put a label (e.g. "above", "left of", "edge",
+   compass directions) -- those describe a position, they are never
+   themselves text to draw.
 
 Render as a single static image, roughly square, high contrast, suitable
 for direct inclusion in a printed math worksheet."""
