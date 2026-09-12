@@ -41,6 +41,29 @@ ROLE_STYLE = {
     "computed_vector": {"color": "darkgreen", "line_style": "dotted"},
 }
 
+# Display-only substitution: fixture label text and param_name spell Greek
+# letters out in ASCII ("alpha", "lambda", ...) since that's plain-ASCII
+# data safe for the solver/validators. The image prompt is a pure
+# rendering concern, so translate to real Greek glyphs here rather than
+# touching the shared fixtures (which geometry_compiler's tests are
+# graded against verbatim). Longest names first so "gamma" doesn't get
+# clobbered by a shorter substring match.
+GREEK = {
+    "alpha": "α", "beta": "β", "gamma": "γ",
+    "lambda": "λ", "mu": "μ", "theta": "θ",
+}
+_GREEK_PATTERN = None
+
+
+def greekify(text: str) -> str:
+    import re
+
+    global _GREEK_PATTERN
+    if _GREEK_PATTERN is None:
+        names = sorted(GREEK, key=len, reverse=True)
+        _GREEK_PATTERN = re.compile(r"\b(" + "|".join(names) + r")\b", re.IGNORECASE)
+    return _GREEK_PATTERN.sub(lambda m: GREEK[m.group(1).lower()], text)
+
 
 def resolve_api_key() -> str:
     try:
@@ -67,32 +90,43 @@ def fmt_vec(v: dict) -> str:
 
 
 def describe_entity(e: dict) -> str:
+    """Returns (description_text, literal_on_image_label). The description
+    is instructions FOR the model (positions, colors, anchor rules) --
+    never meant to appear on the image itself. The label is the one and
+    only string that should actually be rendered as text for this entity.
+    Keeping these visibly separate (rather than one flowing paragraph)
+    is a deliberate fix: an earlier version wrote both together and the
+    model sometimes echoed fragments of the instruction prose (anchor
+    points, direction-vector tuples, even words like "given") onto the
+    image as if they were part of the label.
+    """
     style = ROLE_STYLE[e["visual_role"]]
-    label = e["label"]
+    label_text = greekify(e["label"]["text"])
     lines = [
-        f"- id `{e['id']}` ({e['kind']}, status={e['status']}, role={e['visual_role']})",
-        f"  color: {style['color']}, line style: {style['line_style']}",
-        f"  label: \"{label['text']}\" anchored at the {label['anchor']} edge of its reference point/line "
-        f"(the label text must not overlap the point or line it names)",
+        f"- id `{e['id']}` ({e['kind']}, role={e['visual_role']}): "
+        f"color {style['color']}, line style {style['line_style']}.",
+        f"  ON-IMAGE TEXT FOR THIS ENTITY (verbatim, exactly this and nothing "
+        f"more): \"{label_text}\" -- place it at the {e['label']['anchor']} "
+        "edge of the entity so it never overlaps the point/line/arrow itself.",
     ]
     if e["kind"] == "point":
-        lines.append(f"  coordinates: {fmt_vec(e['coordinates'])}")
+        lines.append(f"  Plot at coordinates {fmt_vec(e['coordinates'])} (not written on the image; for your placement only).")
     elif e["kind"] == "parametric_line":
         lines.append(
-            f"  passes through anchor point {fmt_vec(e['anchor'])} with direction vector "
-            f"{fmt_vec(e['direction'])} (parameter name: {e.get('param_name') or 't'})"
+            f"  Passes through {fmt_vec(e['anchor'])} with direction {fmt_vec(e['direction'])} "
+            "(for your placement only -- these numbers are NOT written on the image anywhere)."
         )
         lines.append(
-            "  draw this as a full straight line (extending a bit past both the anchor "
-            "point and any other labelled point on it), not just a segment between two dots"
+            "  Draw as a full straight line, extending a bit past both its anchor point and "
+            "any other labelled point that sits on it, not just a segment between two dots."
         )
     elif e["kind"] == "vector":
         lines.append(
-            f"  components {fmt_vec(e['components'])}, drawn as an arrow from the origin "
-            "(or from wherever makes the figure clearest, but its direction and length must "
-            "match these exact components)"
+            f"  Components {fmt_vec(e['components'])} (for your placement only -- not written "
+            "on the image), drawn as an arrow from the origin whose direction and length match "
+            "these exact components."
         )
-    return "\n".join(lines)
+    return "\n".join(lines), label_text
 
 
 def describe_relation(r: dict, entities_by_id: dict) -> str:
@@ -132,25 +166,48 @@ def describe_relation(r: dict, entities_by_id: dict) -> str:
 
 def build_prompt(scene_graph: dict) -> str:
     entities_by_id = {e["id"]: e for e in scene_graph["entities"]}
-    entity_lines = "\n".join(describe_entity(e) for e in scene_graph["entities"])
+    described = [describe_entity(e) for e in scene_graph["entities"]]
+    entity_lines = "\n".join(text for text, _label in described)
+    on_image_labels = [label for _text, label in described]
     relation_lines = "\n".join(
         describe_relation(r, entities_by_id) for r in scene_graph.get("relations", [])
     ) or "(no incidence relations for this problem -- it is a pure algebraic system; do not invent any)"
 
-    return f"""Create a clean, textbook-style 2D diagram depicting a 3D vector-geometry
-figure (problem {scene_graph['problem_id']}), the way it would appear as a
-hand-drawn illustration in a math textbook -- NOT a photorealistic 3D render.
+    whitelist = ", ".join(f'"{lbl}"' for lbl in on_image_labels)
 
-Use an oblique 3D coordinate system: draw x, y, z axes as three lines meeting
-at a labelled origin, with the axes clearly but unobtrusively visible in the
-background (thin, gray, behind the geometric entities).
+    return f"""Create a textbook-style 2D diagram depicting a 3D vector-geometry
+figure (problem {scene_graph['problem_id']}) that genuinely reads as three-
+dimensional space, not a flat schematic -- the way a well-drawn textbook
+3D figure uses perspective and depth cues, while still being a clean line
+diagram, NOT a photorealistic render.
 
-Every coordinate below has already been computed and verified exactly by a
-symbolic solver -- do not alter, round, or re-derive any of them. Plot the
-entities using these EXACT values and this EXACT visual encoding. This is
-the whole point of the figure: a student should be able to read off which
-elements are given data and which is the answer being solved for, at a
-glance, without reading the original word problem.
+COORDINATE SYSTEM:
+Use an oblique 3D projection: x, y, z axes as three lines meeting at a
+labelled origin O. EACH axis must extend in BOTH directions from the
+origin (positive AND negative) -- do not draw axes as one-way rays. Put
+small, evenly-spaced tick marks along all three axes on both sides of the
+origin (e.g. every 1-2 units), so the negative regions of the coordinate
+system are visibly present, not just implied. Axes are thin and gray,
+clearly behind the geometric entities, with light tick labels (a few
+integers is enough -- do not label every tick).
+
+DEPTH:
+Make the space itself read as three-dimensional: use consistent
+foreshortening (the axis coming toward the viewer drawn shorter/more
+oblique than the other two), and a subtle, light gray floor-plane grid
+(aligned to two of the three axes) purely as a depth cue -- faint enough
+that it never competes with the entities themselves. Lines/vectors that
+extend further from the viewer along the depth axis may be drawn very
+slightly lighter to reinforce depth, but every entity must remain
+clearly legible and true to its exact coordinates -- depth cues are
+support, not the subject.
+
+Every coordinate below has already been computed and verified exactly by
+a symbolic solver -- do not alter, round, or re-derive any of them. Plot
+the entities using these EXACT values and this EXACT visual encoding.
+This is the whole point of the figure: a student should be able to read
+off which elements are given data and which is the answer being solved
+for, at a glance, without reading the original word problem.
 
 ENTITIES:
 {entity_lines}
@@ -166,13 +223,28 @@ polished):
    in 3D-on-2D can look like the same line continuing).
 2. Every label needs an explicit anchor edge (as specified per entity above)
    -- position each label so it never overlaps the point, line, or vector it
-   names.
-3. Labels and all mathematical notation should be a normal, legible text
+   names, and never writes raw coordinate tuples or parameter names onto
+   the figure as if they were the label.
+3. Greek letters (α, β, γ, λ, ...) must render as proper mathematical
+   symbols, never spelled out as Latin words.
+4. Labels and all mathematical notation should be a normal, legible text
    size matching clean textbook typography -- not tiny, not oversized.
-4. Do not add any point, line, vector, plane, or grid that is not listed
-   above. No decorative elements, no shading, no photorealistic lighting.
-5. Keep the background plain/white so the figure reads clearly as a
+5. Do not add any point, line, vector, or plane that is not listed above.
+   The only permitted "extra" elements are the axis tick marks and the
+   single faint depth-cue floor grid described above -- no other
+   decoration, no photorealistic lighting or texture.
+6. Keep the background plain/white so the figure reads clearly as a
    reference diagram, not an illustration.
+7. TEXT WHITELIST -- this is the single most important rule. The ONLY
+   text allowed anywhere on the image is: the axis names x, y, z; the
+   origin mark O; small numeral tick labels on the axes; and these exact
+   strings, one per entity, nothing else: {whitelist}.
+   Do NOT write any coordinate tuple, anchor point, direction vector, or
+   parameter name as its own separate text anywhere on the image, even
+   near the entity it describes -- that numeric information is there so
+   you know WHERE to draw and how to size arrows, not WHAT to write. If
+   it is not one of the exact strings listed above (or an axis name /
+   tick numeral), it must not appear as text on the image.
 
 Render as a single static image, roughly square, high contrast, suitable
 for direct inclusion in a printed math worksheet."""

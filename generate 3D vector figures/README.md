@@ -31,12 +31,28 @@ Needs a Gemini API key -- see the project-root `.env` / `.env.example`
 and `problem_parser/README.md`'s "Set your API key" section (same
 resolution order is used here).
 
-## Known limitation
+## Known limitations
 
 An image model does not do real geometric projection, so it can still
-misplace things a true renderer wouldn't -- e.g. the first pass on
-`M26S2J21Q3` (two skew lines) planted both intersection points at the
-2D projection's false crossing point. The prompt now explicitly asks for
-a depth-break cue to avoid that, but the model is still not guaranteed
-to get spatial relationships exactly right the way a coordinate-driven
-renderer would.
+misplace things a true renderer wouldn't:
+
+- **Skew lines can look like they cross.** The first pass on `M26S2J21Q3`
+  (two skew lines) planted both intersection points at the 2D
+  projection's false crossing point. Fixed by explicitly asking for a
+  depth-break cue and forbidding C/D from sitting at the apparent
+  crossing.
+- **Prompt text can leak onto the image as if it were a label.** An
+  earlier version described each entity's anchor point / direction
+  vector in the same flowing sentence as its label, and the model
+  sometimes echoed fragments of that instruction prose (raw coordinate
+  tuples, even words like "given") onto the figure as extra text. Fixed
+  by cleanly separating, per entity, the literal on-image label (quoted,
+  verbatim) from everything else (which is explicitly marked "for your
+  placement only -- not written on the image"), plus a closing
+  whitelist rule naming every string the model is allowed to render.
+
+Neither fix makes the model an exact geometric renderer -- it's still
+not guaranteed to get spatial relationships exactly right the way a
+coordinate-driven renderer (e.g. generated TikZ) would. These are
+mitigations for specific failure modes actually observed, not a
+guarantee against new ones.
