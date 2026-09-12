@@ -1,0 +1,65 @@
+{
+  "problem_id": "M26S2J21Q3",
+  "problem_type": "two_lines_with_third_direction_constraint",
+  "source_text": "Given: L1 through (2,6,7) parallel to (-3,2,4); L2 through (4,3,5) parallel to (2,1,3); L3 parallel to (-3,5,16) meets L1 at C, L2 at D. Find: |CD|^2",
+  "entities": [
+    {
+      "id": "L1",
+      "kind": "parametric_line",
+      "label": {"text": "L1", "anchor": "north west"},
+      "status": "given",
+      "visual_role": "given_line",
+      "anchor": {"x": "2", "y": "6", "z": "7"},
+      "direction": {"x": "-3", "y": "2", "z": "4"},
+      "param_name": "t"
+    },
+    {
+      "id": "L2",
+      "kind": "parametric_line",
+      "label": {"text": "L2", "anchor": "south west"},
+      "status": "given",
+      "visual_role": "given_line",
+      "anchor": {"x": "4", "y": "3", "z": "5"},
+      "direction": {"x": "2", "y": "1", "z": "3"},
+      "param_name": "s"
+    },
+    {
+      "id": "n3",
+      "kind": "vector",
+      "label": {"text": "L3 direction", "anchor": "north"},
+      "status": "given",
+      "visual_role": "given_vector",
+      "components": {"x": "-3", "y": "5", "z": "16"},
+      "notes": ["direction of L3; L3's own anchor point is not given or needed"]
+    },
+    {
+      "id": "C",
+      "kind": "point",
+      "label": {"text": "C", "anchor": "west"},
+      "status": "unknown",
+      "visual_role": "computed_point",
+      "notes": ["where L3 meets L1"]
+    },
+    {
+      "id": "D",
+      "kind": "point",
+      "label": {"text": "D", "anchor": "east"},
+      "status": "unknown",
+      "visual_role": "computed_point",
+      "notes": ["where L3 meets L2"]
+    }
+  ],
+  "relations": [
+    {"kind": "lies_on", "subject": "C", "object": "L1"},
+    {"kind": "lies_on", "subject": "D", "object": "L2"},
+    {"kind": "parallel_to", "subject": "D", "object": "n3", "via": "C"}
+  ],
+  "equations": [
+    "C == A(L1) + t * d(L1)",
+    "D == A(L2) + s * d(L2)",
+    "cross(D - C, n3) == zero"
+  ],
+  "unknown_scalars": ["t", "s"],
+  "target": "the squared distance between C and D",
+  "query_expr": "dot(D - C, D - C)"
+}

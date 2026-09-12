@@ -1,0 +1,62 @@
+{
+  "problem_id": "M26S2J21Q3",
+  "entities": [
+    {
+      "id": "L1",
+      "kind": "parametric_line",
+      "label": {"text": "L1", "anchor": "north west"},
+      "status": "given",
+      "visual_role": "given_line",
+      "anchor": {"x": "2", "y": "6", "z": "7"},
+      "direction": {"x": "-3", "y": "2", "z": "4"},
+      "param_name": "t"
+    },
+    {
+      "id": "L2",
+      "kind": "parametric_line",
+      "label": {"text": "L2", "anchor": "south west"},
+      "status": "given",
+      "visual_role": "given_line",
+      "anchor": {"x": "4", "y": "3", "z": "5"},
+      "direction": {"x": "2", "y": "1", "z": "3"},
+      "param_name": "s"
+    },
+    {
+      "id": "n3",
+      "kind": "vector",
+      "label": {"text": "L3 direction", "anchor": "north"},
+      "status": "given",
+      "visual_role": "given_vector",
+      "components": {"x": "-3", "y": "5", "z": "16"}
+    },
+    {
+      "id": "C",
+      "kind": "point",
+      "label": {"text": "C", "anchor": "west"},
+      "status": "computed",
+      "visual_role": "computed_point",
+      "coordinates": {"x": "11", "y": "0", "z": "-5"}
+    },
+    {
+      "id": "D",
+      "kind": "point",
+      "label": {"text": "D", "anchor": "east"},
+      "status": "computed",
+      "visual_role": "computed_point",
+      "coordinates": {"x": "8", "y": "5", "z": "11"}
+    }
+  ],
+  "relations": [
+    {"kind": "lies_on", "subject": "C", "object": "L1"},
+    {"kind": "lies_on", "subject": "D", "object": "L2"},
+    {"kind": "parallel_to", "subject": "D", "object": "n3", "via": "C"}
+  ],
+  "solved_scalars": {"t": "-3", "s": "2"},
+  "verifications": [
+    {"check": "C == A(L1) + t * d(L1)", "passed": true, "residual": "0"},
+    {"check": "D == A(L2) + s * d(L2)", "passed": true, "residual": "0"},
+    {"check": "cross(D - C, n3) == zero", "passed": true, "residual": "0"}
+  ],
+  "verified": true,
+  "final_answer": "290"
+}

@@ -1,0 +1,45 @@
+{
+  "problem_id": "M26S1J21Q55",
+  "entities": [
+    {
+      "id": "a",
+      "kind": "vector",
+      "label": {"text": "a", "anchor": "north west"},
+      "status": "given",
+      "visual_role": "given_vector",
+      "components": {"x": "-1", "y": "2", "z": "2"}
+    },
+    {
+      "id": "b",
+      "kind": "vector",
+      "label": {"text": "b", "anchor": "north east"},
+      "status": "given",
+      "visual_role": "given_vector",
+      "components": {"x": "8", "y": "7", "z": "-3"}
+    },
+    {
+      "id": "n",
+      "kind": "vector",
+      "label": {"text": "(1,1,1)", "anchor": "south"},
+      "status": "given",
+      "visual_role": "given_vector",
+      "components": {"x": "1", "y": "1", "z": "1"}
+    },
+    {
+      "id": "c",
+      "kind": "vector",
+      "label": {"text": "c", "anchor": "east"},
+      "status": "computed",
+      "visual_role": "computed_vector",
+      "components": {"x": "2", "y": "-1", "z": "3"}
+    }
+  ],
+  "relations": [],
+  "solved_scalars": {},
+  "verifications": [
+    {"check": "cross(a, c) == b", "passed": true, "residual": "0"},
+    {"check": "dot(c, n) == 4", "passed": true, "residual": "0"}
+  ],
+  "verified": true,
+  "final_answer": "27"
+}

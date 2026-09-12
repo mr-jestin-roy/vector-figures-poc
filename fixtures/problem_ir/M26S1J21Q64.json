@@ -1,0 +1,54 @@
+{
+  "problem_id": "M26S1J21Q64",
+  "problem_type": "point_and_line_foot_of_perpendicular",
+  "source_text": "Given: (alpha,beta,gamma) is the foot of the perpendicular from (5,4,2) to the line r = (-i+3j+k) + lambda(2i+3j-k). Find: the projection of alpha*i+beta*j+gamma*k onto 6i+2j+3k",
+  "entities": [
+    {
+      "id": "P",
+      "kind": "point",
+      "label": {"text": "P(5,4,2)", "anchor": "north"},
+      "status": "given",
+      "visual_role": "given_external_point",
+      "coordinates": {"x": "5", "y": "4", "z": "2"}
+    },
+    {
+      "id": "L",
+      "kind": "parametric_line",
+      "label": {"text": "L", "anchor": "south west"},
+      "status": "given",
+      "visual_role": "given_line",
+      "anchor": {"x": "-1", "y": "3", "z": "1"},
+      "direction": {"x": "2", "y": "3", "z": "-1"},
+      "param_name": "lambda"
+    },
+    {
+      "id": "F",
+      "kind": "point",
+      "label": {"text": "F=(alpha,beta,gamma)", "anchor": "east"},
+      "status": "unknown",
+      "visual_role": "computed_point",
+      "notes": ["foot of the perpendicular from P to L"]
+    },
+    {
+      "id": "v",
+      "kind": "vector",
+      "label": {"text": "(6,2,3)", "anchor": "south east"},
+      "status": "given",
+      "visual_role": "given_vector",
+      "components": {"x": "6", "y": "2", "z": "3"},
+      "notes": ["projection target direction"]
+    }
+  ],
+  "relations": [
+    {"kind": "lies_on", "subject": "F", "object": "L"},
+    {"kind": "perpendicular_to", "subject": "F", "object": "L", "via": "P"},
+    {"kind": "projects_onto", "subject": "F", "object": "v"}
+  ],
+  "equations": [
+    "F == A(L) + lambda * d(L)",
+    "dot(P - F, d(L)) == 0"
+  ],
+  "unknown_scalars": ["lambda"],
+  "target": "the scalar projection of F (as a vector from the origin) onto v",
+  "query_expr": "dot(F, v) / norm(v)"
+}

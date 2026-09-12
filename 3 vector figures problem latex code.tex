@@ -1,0 +1,97 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb}
+\usepackage{geometry}
+\geometry{a4paper, margin=1in}
+
+\begin{document}
+
+% ==========================================
+% SECTION 1: M26S1J21Q55
+% ==========================================
+\section*{Section 1: M26S1J21Q55} %[cite: 1]
+
+\noindent \textbf{When:} M26S1J21Q55 \quad \textbf{Topic:} Vector algebra toolkit (cf. A14) \\ %[cite: 1]
+\textbf{Given:} $\vec{a} = -\hat{i} + 2\hat{j} + 2\hat{k}$, $\vec{b} = 8\hat{i} + 7\hat{j} - 3\hat{k}$, with $\vec{a} \times \vec{c} = \vec{b}$ and $\vec{c} \cdot (\hat{i} + \hat{j} + \hat{k}) = 4$ \\ %[cite: 1]
+\textbf{Find:} $|\vec{a} + \vec{c}|^2$ \\[0.5em] %[cite: 1]
+\textbf{What this is asking:} $|\vec{a} + \vec{c}|^2$ is the squared length of the vector sum $\vec{a} + \vec{c}$ --- a single number measuring how far the point $\vec{a} + \vec{c}$ sits from the origin, once $\vec{c}$ itself has been pinned down by the two given conditions. %[cite: 1]
+
+\subsection*{UF-S Solves} %[cite: 1]
+\begin{enumerate}
+    \item $\vec{a} \times \vec{c} = \vec{b}$ in components gives three scalar equations in $c_1, c_2, c_3$. %[cite: 1]
+    \item Only two are independent (the third follows automatically, since $\vec{a} \cdot \vec{b} = 0$). %[cite: 1]
+    \item Set $c_3 = t$: the two independent equations give $c_1, c_2$ in terms of $t$. %[cite: 1]
+    \item \textbf{Predict:} Substitute into $\vec{c} \cdot (1,1,1) = 4$ to solve for $t$, then compute $|\vec{a} + \vec{c}|^2$. %[cite: 1]
+\end{enumerate}
+
+\subsection*{Foundation} %[cite: 1]
+\noindent \textbf{Underdetermined cross-product.} $\vec{a} \times \vec{c} = \vec{b}$ (with $\vec{a} \cdot \vec{b} = 0$) determines $\vec{c}$ only up to adding a multiple of $\vec{a}$. %[cite: 1]
+\begin{itemize}
+    \item Compute $\vec{a} \times \vec{c} = (2c_3 - 2c_2, 2c_1 + c_3, -c_2 - 2c_1)$ and match to $\vec{b} = (8,7,-3)$; gives $c_3 - c_2 = 4$ and $2c_1 + c_3 = 7$. %[cite: 1]
+    \item Set $c_3 = t$: then $c_2 = t - 4$ and $c_1 = (7 - t)/2$. %[cite: 1]
+    \item Impose $\vec{c} \cdot (1,1,1) = 4$, i.e., $c_1 + c_2 + c_3 = 4$ solves to $t = 3$ so $\vec{c} = (2,-1,3)$. %[cite: 1]
+    \item $\vec{a} + \vec{c} = (1,1,5) \Rightarrow \boxed{|\vec{a} + \vec{c}|^2 = 27}$ %[cite: 1]
+\end{itemize}
+
+\vspace{1em}
+\hrule
+\vspace{1em}
+
+% ==========================================
+% SECTION 2: M26S1J21Q64
+% ==========================================
+\section*{Section 2: M26S1J21Q64} %[cite: 1]
+
+\noindent \textbf{When:} M26S1J21Q64 \quad \textbf{Topic:} A point and a line (cf. A6+A14) \\ %[cite: 1]
+\textbf{Given:} $(\alpha,\beta,\gamma)$ is the foot of the perpendicular from $(5,4,2)$ to the line $\vec{r} = (-\hat{i}+3\hat{j}+\hat{k}) + \lambda(2\hat{i}+3\hat{j}-\hat{k})$ \\ %[cite: 1]
+\textbf{Find:} the projection of $\alpha\hat{i}+\beta\hat{j}+\gamma\hat{k}$ onto $6\hat{i}+2\hat{j}+3\hat{k}$ \\[0.5em] %[cite: 1]
+\textbf{What this is asking:} This asks for the length of the shadow that one specific point --- the closest point on a given line to $(5,4,2)$ --- casts onto a chosen direction $(6,2,3)$. %[cite: 1]
+
+\subsection*{UF-S Solves} %[cite: 1]
+\begin{enumerate}
+    \item Every point on the line is $\vec{r}(\lambda) = (-1+2\lambda, 3+3\lambda, 1-\lambda)$. %[cite: 1]
+    \item The foot of the perpendicular from $P=(5,4,2)$ is the point where $\vec{r}(\lambda) - P$ is perpendicular to the line's direction $(2,3,-1)$. %[cite: 1]
+    \item Perpendicular means their dot product is zero. %[cite: 1]
+    \item \textbf{Predict:} One linear equation in $\lambda$; solve it, get the foot, then project onto $(6,2,3)$. %[cite: 1]
+\end{enumerate}
+
+\subsection*{Foundation} %[cite: 1]
+\noindent \textbf{Foot-of-perpendicular.} On a line $\vec{r}(\lambda) = A + \lambda\vec{d}$, the foot from $P$ is the $F$ solving $(\vec{r}(\lambda) - P) \cdot \vec{d} = 0$. %[cite: 1]
+\begin{itemize}
+    \item Compute $\vec{r}(\lambda) - P = (2\lambda - 6, 3\lambda - 1, -\lambda - 1)$. %[cite: 1]
+    \item Dot with direction $(2,3,-1)$ and set to zero: $14\lambda - 14 = 0 \Rightarrow \lambda = 1$. %[cite: 1]
+    \item Foot $F = (-1+2, 3+3, 1-1) = (1,6,0)$. %[cite: 1]
+    \item Project onto $(6,2,3)$: $\frac{1(6) + 6(2) + 0(3)}{\sqrt{36+4+9}} = \frac{18}{7} \Rightarrow \boxed{18/7}$ %[cite: 1]
+\end{itemize}
+
+\vspace{1em}
+\hrule
+\vspace{1em}
+
+% ==========================================
+% SECTION 3: M26S2J21Q3
+% ==========================================
+\section*{Section 3: M26S2J21Q3} %[cite: 1]
+
+\noindent \textbf{When:} M26S2J21Q3 \quad \textbf{Topic:} Two lines together (cf. A14) \\ %[cite: 1]
+\textbf{Given:} $L_1$ through $(2,6,7)$ parallel to $(-3,2,4)$; $L_2$ through $(4,3,5)$ parallel to $(2,1,3)$; $L_3$ parallel to $(-3,5,16)$ meets $L_1$ at $C$, $L_2$ at $D$ \\ %[cite: 1]
+\textbf{Find:} $|\vec{CD}|^2$ \\[0.5em] %[cite: 1]
+\textbf{What this is asking:} This is asking for the squared straight-line distance between two points: $C$, where a line parallel to a given direction meets $L_1$, and $D$, where that same line meets $L_2$. %[cite: 1]
+
+\subsection*{UF-S Solves} %[cite: 1]
+\begin{enumerate}
+    \item Write $C$ and $D$ as points on $L_1, L_2$ using their own parameters: $C = (2,6,7) + t(-3,2,4)$, $D = (4,3,5) + s(2,1,3)$. %[cite: 1]
+    \item $\vec{CD} = D - C$ must be parallel to $L_3$ direction $(-3,5,16)$ --- three scalar equations (one per coordinate) in the two unknowns $t, s$, over-determined but consistent since $L_3$ genuinely exists. %[cite: 1]
+    \item \textbf{Predict:} Solve for $t, s$ from the parallel condition, then compute $C, D$ and the distance directly. %[cite: 1]
+\end{enumerate}
+
+\subsection*{Foundation} %[cite: 1]
+\noindent \textbf{Parametrised-points-on-two-lines.} Two points constrained to lie on two given lines, with their connecting vector forced to a third fixed direction, is a linear system in the two line-parameters --- no geometric guessing needed. %[cite: 1]
+\begin{itemize}
+    \item $D - C = (2 + 3t + 2s, -3 - 2t + s, -2 - 4t + 3s)$ must be proportional to $(-3, 5, 16)$. %[cite: 1]
+    \item Solving the resulting equations gives $t = -3$, $s = 2$ (checked consistent across all three coordinates). %[cite: 1]
+    \item $C = (11,0,-5)$, $D = (8,5,11)$. %[cite: 1]
+    \item $|\vec{CD}|^2 = (-3)^2 + 5^2 + 16^2 = 9 + 25 + 256 \Rightarrow \boxed{290}$ %[cite: 1]
+\end{itemize}
+
+\end{document}

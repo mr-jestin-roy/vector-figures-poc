@@ -1,0 +1,48 @@
+{
+  "problem_id": "M26S1J21Q55",
+  "problem_type": "vector_cross_and_dot_system",
+  "source_text": "Given: a = -i + 2j + 2k, b = 8i + 7j - 3k, with a x c = b and c . (i + j + k) = 4. Find: |a + c|^2",
+  "entities": [
+    {
+      "id": "a",
+      "kind": "vector",
+      "label": {"text": "a", "anchor": "north west"},
+      "status": "given",
+      "visual_role": "given_vector",
+      "components": {"x": "-1", "y": "2", "z": "2"}
+    },
+    {
+      "id": "b",
+      "kind": "vector",
+      "label": {"text": "b", "anchor": "north east"},
+      "status": "given",
+      "visual_role": "given_vector",
+      "components": {"x": "8", "y": "7", "z": "-3"}
+    },
+    {
+      "id": "n",
+      "kind": "vector",
+      "label": {"text": "(1,1,1)", "anchor": "south"},
+      "status": "given",
+      "visual_role": "given_vector",
+      "components": {"x": "1", "y": "1", "z": "1"},
+      "notes": ["direction defining the plane constraint c . n = 4"]
+    },
+    {
+      "id": "c",
+      "kind": "vector",
+      "label": {"text": "c", "anchor": "east"},
+      "status": "unknown",
+      "visual_role": "computed_vector",
+      "notes": ["only determined up to a multiple of a before the plane constraint is imposed"]
+    }
+  ],
+  "relations": [],
+  "equations": [
+    "cross(a, c) == b",
+    "dot(c, n) == 4"
+  ],
+  "unknown_scalars": [],
+  "target": "the squared length of the vector a + c",
+  "query_expr": "dot(a + c, a + c)"
+}
